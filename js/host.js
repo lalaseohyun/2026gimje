@@ -33,6 +33,9 @@ const S = {
   admin: false
 };
 
+// host.html?demo — 백엔드에 아무것도 쓰지 않고 화면 흐름과 크기만 점검한다.
+const DEMO = new URLSearchParams(location.search).has('demo');
+
 const draw = batcher(render);
 const st = () => normalizeState(S.state);
 const currentQ = () => QUESTIONS[st().index];
@@ -104,6 +107,7 @@ function startHost() {
 
 async function commit(next, extra = {}) {
   if (S.busy) return;
+  if (DEMO) { demoCommit(normalizeState(next), extra); return; }
   S.busy = true; draw();
   const state = normalizeState(next);
   const live = deriveLive(state, QUESTIONS, {
@@ -115,6 +119,27 @@ async function commit(next, extra = {}) {
   draw();
 }
 
+function demoCommit(state, extra) {
+  for (const k of Object.keys(extra)) {
+    if (k === 'quiz/answers') S.answers = null;
+    else if (k.startsWith('quiz/answers/')) S.answers = { ...S.answers, [k.split('/')[2]]: null };
+  }
+  if (state.open) {
+    const q = QUESTIONS[state.index];
+    S.answers = { ...S.answers, [q.id]: Object.fromEntries(TEAMS.slice(0, 5).map((t, i) =>
+      [t.id, { choice: i % 2 ? i % q.choices.length : q.answer, ms: 1500 * (i + 1) }])) };
+  }
+  S.state = state;
+  draw();
+}
+
+function startDemo() {
+  S.auth = 'ready';
+  S.state = null;
+  S.teams = Object.fromEntries(TEAMS.slice(0, 5).map(t => [t.id, { name: t.name }]));
+  draw();
+}
+
 const actions = {
   startQuiz: () => commit({ ...INITIAL_STATE, phase: 'quiz' }),
   // 홈(대기화면)은 진행 상태와 답안을 그대로 둔 채 화면만 QR로 돌린다.
@@ -123,6 +148,25 @@ const actions = {
     return commit({ ...st(), phase: 'lobby', open: false });
   },
   resume: () => commit({ ...st(), phase: 'quiz', open: false }),
+  // 문제 번호로 바로 간다. 이미 답을 받은 문제는 정답 공개 상태로, 아직인 문제는 문제만 보이는 상태로 연다.
+  goto(i) {
+    const s = st(), q = QUESTIONS[i];
+    if (!q) return;
+    const done = s.asked.includes(q.id);
+    Object.assign(S, { showCount: false, showRank: false, showExplain: done });
+    return commit({ ...s, phase: 'quiz', index: i, open: false, revealed: done });
+  },
+  // ◀ : 지금 화면에서 한 단계 뒤로.
+  back() {
+    const s = st(), q = currentQ();
+    if (s.phase === 'lobby') return;
+    if (s.phase === 'final') return actions.goto(QUESTIONS.length - 1);
+    if (s.revealed && S.showExplain) { S.showExplain = false; draw(); return; }
+    if (s.revealed) { S.showCount = true; return commit({ ...s, revealed: false }); }
+    if (S.showCount) { S.showCount = false; draw(); return; }
+    if (s.index > 0 && !s.open) return actions.goto(s.index - 1);
+    if (s.index === 0 && !s.asked.includes(q.id)) return actions.home();
+  },
   open() {
     const s = st();
     return commit({ ...s, open: true, asked: [...new Set([...s.asked, currentQ().id])] });
@@ -179,9 +223,9 @@ function primary() {
       ? { label: EVENT.showRanking ? '최종 순위' : '퀴즈 종료', run: actions.final }
       : { label: '다음 문제', run: actions.next };
   }
-  if (s.open) return { label: '답안 마감', run: actions.close };
-  if (s.asked.includes(q.id)) return { label: '정답 공개', run: actions.reveal };
-  return { label: '보기 공개 · 답안 시작', run: actions.open };
+  if (!s.asked.includes(q.id)) return { label: '보기 공개 · 답안 시작', run: actions.open };
+  if (!S.showCount) return { label: '제출 현황', run: () => { S.showCount = true; draw(); } };
+  return { label: '정답 공개', run: actions.reveal };
 }
 
 // ── 백업 ──────────────────────────────────────────────────
@@ -280,11 +324,9 @@ function viewQuestion() {
   const long = q.choices.some(c => c.length > 7);
 
   const explain = s.revealed && S.showExplain && q.explanation;
-  // 해설 단계에서는 정답 보기 하나만 남겨 해설 자리를 넓힌다.
-  const shown = q.choices.map((c, i) => [c, i]).filter(([, i]) => !explain || i === q.answer);
   const choices = h('div', {
-    class: `choices ${long ? 'long' : ''}`, style: `--n:${explain ? 1 : long ? 2 : n};${veil(asked)}`
-  }, shown.map(([c, i]) => {
+    class: `choices ${long ? 'long' : ''}`, style: `--n:${long ? 2 : n};${veil(asked)}`
+  }, q.choices.map((c, i) => {
     const cnt = subs.filter(([, a]) => a.choice === i).length;
     return h('div', { class: `ch ${s.revealed ? (i === q.answer ? 'correct' : 'dimmed') : ''}` },
       h('div', { class: 'n' }, i + 1),
@@ -317,10 +359,11 @@ function viewQuestion() {
     h('div', { class: 'badges' }, h('span', { class: 'badge num' }, `문제 ${q.no} / ${QUESTIONS.length}`)),
     h('div', { class: 'q' }, q.question),
     choices,
-    explain && h('div', { class: 'answerbox' },
-      q.explanation.split('\n').filter(l => l.trim()).map(l => h('p', null, l))),
-    h('div', { class: 'qbottom' }, !explain && foot,
-      h('div', { class: 'pagedots' }, QUESTIONS.map((_, i) => h('i', { class: i === s.index ? 'on' : '' })))));
+    h('div', { class: 'qbottom' }, foot,
+      h('div', { class: 'pagedots' }, QUESTIONS.map((_, i) => h('i', { class: i === s.index ? 'on' : '' })))),
+    // 해설은 화면을 바꾸지 않고 아래에서 올라오는 창으로 덮는다.
+    explain && h('div', { class: 'answerbox sheet' },
+      q.explanation.split('\n').filter(l => l.trim()).map(l => h('p', null, l))));
 }
 
 function viewRank(title) {
@@ -342,7 +385,7 @@ function viewStage() {
   if (s.phase === 'final') {
     return EVENT.showRanking ? viewRank('최종 순위') : [h('div', { class: 'finaltitle' }, '수고하셨습니다!')];
   }
-  if (s.phase === 'quiz' && currentQ()) return S.showRank ? viewRank('현재 순위') : [viewQuestion()];
+  if (s.phase === 'quiz' && currentQ()) return [viewQuestion()];
   return [viewLobby()];
 }
 
@@ -358,12 +401,17 @@ function viewControls() {
 
   return [
     h('div', { class: 'row1' },
-      inQuiz && h('span', { class: 'pill' }, '제출 ', h('b', null, submitted(q).length), ` / ${TEAMS.length}`),
-      h('span', { class: 'pill' }, status),
+      h('button', { disabled: S.busy || s.phase === 'lobby', onclick: actions.back }, '◀'),
+      h('div', { class: 'qnav' }, QUESTIONS.map((x, i) => h('button', {
+        class: inQuiz && i === s.index ? 'on' : s.asked.includes(x.id) ? 'done' : '',
+        disabled: S.busy, onclick: () => actions.goto(i)
+      }, x.no))),
+      h('button', { disabled: S.busy || !p, onclick: () => p?.run() }, '▶'),
+      inQuiz && h('span', { class: 'pill' }, '제출 ', h('b', null, submitted(q).length), ` / ${TEAMS.length} · ${status}`),
+      DEMO && h('span', { class: 'pill' }, '데모 · 저장 안 됨'),
       S.error && h('span', { class: 'err' }, S.error),
       h('span', { class: 'sp' }),
-      inQuiz && !s.revealed && toggle('showCount', '제출 현황 숨기기', '제출 현황'),
-      inQuiz && EVENT.showRanking && toggle('showRank', '문제로 돌아가기', '현재 순위'),
+      inQuiz && s.open && h('button', { class: 'ghost', disabled: S.busy, onclick: actions.close }, '답안 마감'),
       s.phase !== 'lobby' && h('button', { class: 'ghost', disabled: S.busy, onclick: actions.home }, '홈'),
       h('button', { class: 'ghost', onclick: toggleFullscreen }, document.fullscreenElement ? '전체화면 끝' : '전체화면'),
       inQuiz && h('button', { class: 'danger', disabled: S.busy, onclick: actions.resetQuestion }, '이 문제 리셋'),
@@ -374,7 +422,7 @@ function viewControls() {
     h('div', { class: 'row2' },
       h('button', { onclick: backupJson }, '백업 JSON'),
       h('button', { onclick: backupCsv }, '결과 CSV'),
-      h('span', { class: 'hint' }, 'Space · → 다음 단계 / F 전체화면 / H 조작바 숨기기'),
+      h('span', { class: 'hint' }, '→ · Space 다음 / ← 이전 / F 전체화면 / H 조작바 숨기기'),
       h('span', { class: 'sp' }),
       EVENT.joinMode === 'pin' && h('span', { class: 'hint' }, 'PIN 초기화'),
       EVENT.joinMode === 'pin' && TEAMS.map(t => h('button', {
@@ -383,20 +431,30 @@ function viewControls() {
   ];
 }
 
-// 문제·보기·해설이 화면에 안 들어갈 때만 조금씩 줄인다(quiz.css의 --qs / --cs).
+// 문제·보기가 화면에 안 들어갈 때만 조금씩 줄인다(quiz.css의 --qs / --cs).
 function fit() {
   const view = root.querySelector('.qview');
   if (!view) return;
-  const box = view.querySelector('.answerbox');
-  let s = 1, f = null;
+  let s = 1;
   view.style.setProperty('--qs', 1);
   view.style.setProperty('--cs', 1);
-  if (box) { box.style.fontSize = ''; f = parseFloat(getComputedStyle(box).fontSize); }
-  const over = () => view.scrollHeight > view.clientHeight + 1 || (box && box.scrollHeight > box.clientHeight + 1);
-  while (over() && (s > 0.4 || (f && f > 16))) {
-    if (s > 0.4) { s -= 0.04; view.style.setProperty('--qs', s); view.style.setProperty('--cs', s); }
-    if (f && f > 16) { f *= 0.96; box.style.fontSize = `${f}px`; }
+  while (view.scrollHeight > view.clientHeight + 1 && s > 0.4) {
+    s -= 0.04;
+    view.style.setProperty('--qs', s);
+    view.style.setProperty('--cs', s);
   }
+
+  // 해설 창 — 먼저 보기 아래 빈자리에 맞춰 글자를 줄이고, 그래도 넘치면 보기를 조금 덮는다.
+  const box = view.querySelector('.answerbox.sheet');
+  if (!box) return;
+  const choices = view.querySelector('.choices');
+  const below = view.clientHeight - (choices.offsetTop + choices.offsetHeight) - 10;
+  const over = () => box.scrollHeight > box.clientHeight + 1;
+  let f = parseFloat(getComputedStyle(box).fontSize);
+  const shrink = min => { while (over() && f > min) { f *= 0.96; box.style.fontSize = `${f}px`; } };
+  box.style.maxHeight = `${below}px`;
+  shrink(22);
+  if (over()) { box.style.maxHeight = `${Math.round(view.clientHeight * 0.62)}px`; shrink(16); }
 }
 
 function render() {
@@ -437,8 +495,12 @@ document.addEventListener('keydown', e => {
   if (e.key === ' ' || e.key === 'ArrowRight') {
     e.preventDefault();
     primary()?.run();
+  } else if (e.key === 'ArrowLeft') {
+    e.preventDefault();
+    actions.back();
   }
 });
 
-if (configured) startAuth();
+if (DEMO) startDemo();
+else if (configured) startAuth();
 draw();

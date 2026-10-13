@@ -45,3 +45,34 @@ button.tcard{color:inherit;white-space:normal}
   font-size:14.5px;font-weight:600;text-align:center;margin-bottom:16px}
 .foot .warn{color:var(--no);font-weight:700;margin-left:10px}
 .card p{white-space:pre-line}
+
+/* 조작바 — 문제 번호로 바로 가기. 지금 문제는 노랑, 이미 답을 받은 문제는 밝게 */
+.qnav{display:flex;gap:4px}
+.qnav button{padding:9px 0;width:38px;font-size:14px;font-weight:800;color:var(--ink3);background:transparent}
+.qnav button.done{color:var(--ink);background:var(--panel)}
+.qnav button.on{background:var(--yellow);color:#2c2c2a}
+
+/* 해설 창 — 정답 화면을 그대로 둔 채 아래에서 덮는다 */
+.qview{position:relative}
+.answerbox.sheet{position:absolute;left:0;right:0;bottom:0;margin:0;flex:none;justify-content:flex-start;
+  box-shadow:0 -20px 60px rgba(0,0,0,.6)}
+
+/* 지금 페이지 점은 1.35배로 커진다. 그만큼 아래 여유가 없으면 화면 넘침으로 잡혀 fit()이 글자를 끝까지 줄인다 */
+.pagedots{padding-bottom:5px}
+
+/* 조작바 한 줄에 다 들어가게 — 노트북(1366px) 기준 */
+.ctl button{padding:10px 12px;font-size:14px}
+.ctl button.primary{padding:11px 22px;font-size:16px}
+.ctl .qnav button{padding:9px 0;width:32px}
+.ctl .pill{padding:8px 12px;font-size:13px}
+
+/* 최종 순위 — 6개 존이 3줄×2칸으로 노트북 화면에도 잘리지 않게 quiz.css보다 한 단계 작게 */
+.finaltitle{font-size:clamp(44px,5.4vw,104px);margin-bottom:clamp(12px,2vh,30px)}
+.row{padding:clamp(8px,1.4vh,24px) clamp(24px,2.6vw,50px)}
+.row .r{font-size:clamp(34px,3.4vw,62px);min-width:clamp(90px,7.4vw,140px)}
+.row .tm{font-size:clamp(38px,4vw,72px)}
+.row .sc{font-size:clamp(54px,5.6vw,100px)}
+
+/* 한글은 낱말 중간에서 끊지 않는다. 문제는 줄 길이를 고르게 나눠 "…두 항목 / 은?"처럼 꼬리만 떨어지지 않게 */
+.q,.ch .t,.answerbox,.lobby h2,.card p{word-break:keep-all}
+.q,.lobby h2{text-wrap:balance}

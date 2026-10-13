@@ -8,7 +8,7 @@ import { app as fbApp, configured, safeWrite, read, watch, onConnection } from '
 import { deriveLive, normalizeState, INITIAL_STATE } from './derive.js';
 import { rank, realAnswers } from './score.js';
 import { teamList } from './join.js';
-import { h, batcher, MARKS } from './dom.js';
+import { h, batcher, paragraphs, MARKS } from './dom.js';
 
 const root = document.getElementById('app');
 const TEAMS = teamList();
@@ -26,9 +26,7 @@ const S = {
   busy: false,
   error: '',
   // 아래 셋은 진행자 화면에만 있는 로컬 상태. 백엔드에 올리지 않는다.
-  showCount: false,
   showExplain: false,
-  showRank: false,
   hideCtl: false,
   admin: false
 };
@@ -144,7 +142,7 @@ const actions = {
   startQuiz: () => commit({ ...INITIAL_STATE, phase: 'quiz' }),
   // 홈(대기화면)은 진행 상태와 답안을 그대로 둔 채 화면만 QR로 돌린다.
   home() {
-    Object.assign(S, { showCount: false, showExplain: false, showRank: false });
+    S.showExplain = false;
     return commit({ ...st(), phase: 'lobby', open: false });
   },
   resume: () => commit({ ...st(), phase: 'quiz', open: false }),
@@ -153,7 +151,7 @@ const actions = {
     const s = st(), q = QUESTIONS[i];
     if (!q) return;
     const done = s.asked.includes(q.id);
-    Object.assign(S, { showCount: false, showRank: false, showExplain: done });
+    S.showExplain = done;
     return commit({ ...s, phase: 'quiz', index: i, open: false, revealed: done });
   },
   // ◀ : 지금 화면에서 한 단계 뒤로.
@@ -162,8 +160,7 @@ const actions = {
     if (s.phase === 'lobby') return;
     if (s.phase === 'final') return actions.goto(QUESTIONS.length - 1);
     if (s.revealed && S.showExplain) { S.showExplain = false; draw(); return; }
-    if (s.revealed) { S.showCount = true; return commit({ ...s, revealed: false }); }
-    if (S.showCount) { S.showCount = false; draw(); return; }
+    if (s.revealed) return commit({ ...s, revealed: false });
     if (s.index > 0 && !s.open) return actions.goto(s.index - 1);
     if (s.index === 0 && !s.asked.includes(q.id)) return actions.home();
   },
@@ -174,17 +171,17 @@ const actions = {
   close: () => commit({ ...st(), open: false }),
   reveal: () => commit({ ...st(), open: false, revealed: true }),
   next() {
-    S.showCount = false; S.showExplain = false; S.showRank = false;
+    S.showExplain = false;
     return commit({ ...st(), index: st().index + 1, open: false, revealed: false });
   },
   final() {
-    S.showCount = false; S.showExplain = false; S.showRank = false;
+    S.showExplain = false;
     return commit({ ...st(), phase: 'final', open: false });
   },
   resetQuestion() {
     const s = st(), q = currentQ();
     if (!q || !confirm(`Q${q.no}의 답안을 모두 지우고 처음부터 다시 받을까요?`)) return;
-    S.showCount = false; S.showExplain = false;
+    S.showExplain = false;
     return commit(
       { ...s, open: false, revealed: false, asked: s.asked.filter(id => id !== q.id) },
       { [`quiz/answers/${q.id}`]: null }
@@ -192,7 +189,7 @@ const actions = {
   },
   resetAll() {
     if (!confirm('전체 리셋: 모든 답안·입장 기록·PIN을 지우고 대기 화면으로 돌아갑니다. 계속할까요?')) return;
-    Object.assign(S, { showCount: false, showRank: false, admin: false });
+    Object.assign(S, { showExplain: false, admin: false });
     return commit(INITIAL_STATE, {
       'quiz/answers': null, teams: null, pins: null, 'session/resetAt': Date.now()
     });
@@ -224,7 +221,6 @@ function primary() {
       : { label: '다음 문제', run: actions.next };
   }
   if (!s.asked.includes(q.id)) return { label: '보기 공개 · 답안 시작', run: actions.open };
-  if (!S.showCount) return { label: '제출 현황', run: () => { S.showCount = true; draw(); } };
   return { label: '정답 공개', run: actions.reveal };
 }
 
@@ -350,7 +346,7 @@ function viewQuestion() {
     const stat = cnt === 0 ? h('div', { class: 'tstat' }, '답변을 기다리는 중')
       : cnt === TEAMS.length ? h('div', { class: 'tstat done' }, '전체 제출 완료!')
       : h('div', { class: 'tstat' }, h('b', null, cnt), `${EVENT.teamLabel} 제출 완료${s.open ? '' : ' · 마감됨'}`);
-    foot = h('div', { class: 'foot', style: veil(S.showCount) },
+    foot = h('div', { class: 'foot', style: veil(asked) },
       h('div', { class: 'tmeta' }, stat),
       h('div', { class: 'chips' }, TEAMS.map(t => choiceOf(t) === null ? chip(t, '') : chip(t, 'on', '✓'))));
   }
@@ -363,7 +359,7 @@ function viewQuestion() {
       h('div', { class: 'pagedots' }, QUESTIONS.map((_, i) => h('i', { class: i === s.index ? 'on' : '' })))),
     // 해설은 화면을 바꾸지 않고 아래에서 올라오는 창으로 덮는다.
     explain && h('div', { class: 'answerbox sheet' },
-      q.explanation.split('\n').filter(l => l.trim()).map(l => h('p', null, l))));
+      paragraphs(q.explanation)));
 }
 
 function viewRank(title) {

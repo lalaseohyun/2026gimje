@@ -2,7 +2,7 @@
 import { EVENT } from './config.js';
 import { configured, safeWrite, watch, onConnection, onQueueChange, clearQueue } from './db.js';
 import { teamList, getSavedTeam, saveTeam, clearTeam, claimTeam, setPin, checkPin } from './join.js';
-import { h, batcher, MARKS } from './dom.js';
+import { h, batcher, paragraphs, MARKS } from './dom.js';
 
 const app = document.getElementById('app');
 const TEAMS = teamList();
@@ -221,7 +221,7 @@ function viewQuiz() {
         h('div', { class: 'lb' }, mine === null ? '답을 제출하지 않았어요' : ok ? '정답입니다!' : '아쉬워요'),
         h('div', { class: 'an' }, `정답 · ${MARKS[L.answer]} ${L.choices[L.answer]}`)),
       L.explanation && h('div', { class: 'card' },
-        h('div', { class: 'lb' }, '해설'), h('p', null, L.explanation))
+        h('div', { class: 'lb' }, '해설'), paragraphs(L.explanation))
     ];
   }
 

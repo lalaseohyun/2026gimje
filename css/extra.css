@@ -76,3 +76,7 @@ button.tcard{color:inherit;white-space:normal}
 /* 한글은 낱말 중간에서 끊지 않는다. 문제는 줄 길이를 고르게 나눠 "…두 항목 / 은?"처럼 꼬리만 떨어지지 않게 */
 .q,.ch .t,.answerbox,.lobby h2,.card p{word-break:keep-all}
 .q,.lobby h2{text-wrap:balance}
+
+/* 해설 강조 — 색은 바꾸지 않고 굵기만 */
+.answerbox strong{color:inherit;font-weight:800}
+.card strong{color:var(--fill);font-weight:800}

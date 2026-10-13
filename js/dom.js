@@ -24,4 +24,11 @@ export function batcher(fn) {
   };
 }
 
+/** '가 **나** 다' → ['가 ', <strong>나</strong>, ' 다']. innerHTML을 쓰지 않는다. */
+export const rich = text => String(text).split(/\*\*(.+?)\*\*/g)
+  .map((part, i) => (i % 2 ? h('strong', null, part) : part));
+
+/** 해설 본문: 빈 줄을 뺀 줄마다 <p>, 줄 안의 **굵게**는 <strong> */
+export const paragraphs = text => String(text).split('\n').filter(l => l.trim()).map(l => h('p', null, rich(l)));
+
 export const MARKS = ['①', '②', '③', '④', '⑤', '⑥'];

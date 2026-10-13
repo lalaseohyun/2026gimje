@@ -1,0 +1,47 @@
+/* ───────────────────────────────────────
+   이 프로젝트에서 추가한 것만 — tokens/base/host/team/quiz.css는
+   부안 청년포럼(lalaseohyun/buanforum)의 것을 그대로 가져왔다.
+   ─────────────────────────────────────── */
+
+/* 긴 보기(문장형) — 번호를 왼쪽에 두고 2열로 쌓는다. 짧은 보기는 quiz.css 원래 모양 그대로 */
+.choices.long{gap:clamp(12px,1.6vh,24px) clamp(18px,2vw,40px)}
+.choices.long .ch{flex-direction:row;justify-content:flex-start;text-align:left;
+  gap:clamp(14px,1.4vw,28px);padding:calc(clamp(12px,1.8vh,26px) * var(--cs,1)) clamp(18px,1.8vw,34px)}
+.choices.long .ch .n{flex:0 0 auto}
+.choices.long .ch .t{flex:1;font-size:calc(clamp(22px,2.7vw,52px) * var(--cs,1))}
+.choices.long .ch .tally{flex:0 0 auto;white-space:nowrap}
+.qview.revealed .choices.long .ch .t{font-size:calc(clamp(18px,2.1vw,40px) * var(--cs,1))}
+
+/* 존 이름이 'D+G'처럼 길어도 원 안에 들어가게 */
+.chip.wide{font-size:calc(clamp(22px,2.3vw,40px) * var(--cs,1))}
+.lobby .chip.wide{font-size:clamp(15px,1.4vw,28px)}
+.qview.revealed .foot .chip.wide{font-size:calc(clamp(24px,2.5vw,40px) * var(--cs,1))}
+
+/* 대기화면 QR(SVG) · 접속 주소 */
+.qrbox svg{width:clamp(300px,28vw,620px);height:auto;display:block}
+.lurl{font-size:clamp(13px,1.1vw,22px);color:var(--ink3);font-weight:500;word-break:break-all;margin-top:clamp(10px,1.6vh,20px)}
+
+/* 진행자 암호 입력 */
+.login{flex:1;display:flex;flex-direction:column;justify-content:center;align-items:center;gap:16px;text-align:center}
+.login h2{font-size:32px;font-weight:800;letter-spacing:-.03em}
+.login input,.pin{font:inherit;font-weight:800;text-align:center;color:var(--ink);background:var(--panel);
+  border:2px solid transparent;border-radius:16px;padding:14px 18px;outline:none}
+.login input{font-size:20px;width:min(320px,80vw)}
+.login input:focus,.pin:focus{border-color:var(--yellow)}
+.err{color:var(--no);font-size:14.5px;font-weight:600;line-height:1.5}
+
+/* 참가자 — PIN */
+.pin{font-size:38px;letter-spacing:.35em;width:min(260px,80vw);padding-left:calc(18px + .35em)}
+.center .big.team{color:var(--yellow);font-size:52px;font-weight:800}
+.center button.primary{width:min(260px,80vw)}
+
+/* 참가자 — 제출 버튼 · 안내 띠 */
+button.submit{width:100%;margin-top:18px;padding:17px;font-size:19px}
+button.link{background:none;padding:6px 8px}
+button.tcard{color:inherit;white-space:normal}
+.tcard.taken{opacity:.62}
+.tcard.taken .n::after{content:' 입장함'}
+.notice{background:rgba(253,206,15,.16);color:var(--fill);border-radius:16px;padding:14px 16px;
+  font-size:14.5px;font-weight:600;text-align:center;margin-bottom:16px}
+.foot .warn{color:var(--no);font-weight:700;margin-left:10px}
+.card p{white-space:pre-line}

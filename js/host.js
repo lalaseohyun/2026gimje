@@ -418,7 +418,7 @@ function viewControls() {
     h('div', { class: 'row2' },
       h('button', { onclick: backupJson }, '백업 JSON'),
       h('button', { onclick: backupCsv }, '결과 CSV'),
-      h('span', { class: 'hint' }, '→ · Space 다음 / ← 이전 / F 전체화면 / H 조작바 숨기기'),
+      h('span', { class: 'hint' }, '포인터 · → · Space · 화면 클릭 = 다음 / ← = 이전 / F 전체화면 / H 조작바 숨기기'),
       h('span', { class: 'sp' }),
       EVENT.joinMode === 'pin' && h('span', { class: 'hint' }, 'PIN 초기화'),
       EVENT.joinMode === 'pin' && TEAMS.map(t => h('button', {
@@ -482,19 +482,29 @@ document.addEventListener('fullscreenchange', () => {
   draw();
 });
 
-// Space / → 로 다음 단계, F 전체화면, H 조작바 숨기기. 입력칸에 포커스가 있을 땐 그쪽 동작을 따른다.
+// 무선 포인터(프리젠터)는 기종마다 PageDown/PageUp 또는 화살표를 보낸다. 전부 받는다.
+const NEXT_KEYS = ['ArrowRight', 'ArrowDown', 'PageDown', ' ', 'Enter'];
+const PREV_KEYS = ['ArrowLeft', 'ArrowUp', 'PageUp'];
+
 document.addEventListener('keydown', e => {
   if (S.auth !== 'ready' || e.target.closest('input')) return;
+  // 포인터의 "슬라이드쇼 시작" 버튼은 F5를 보낸다. 새로고침되지 않게 막는다.
+  if (e.key === 'F5') { e.preventDefault(); return; }
   if (e.key === 'f' || e.key === 'F') { toggleFullscreen(); return; }
   if (e.key === 'h' || e.key === 'H') { S.hideCtl = !S.hideCtl; draw(); return; }
-  if (S.busy || S.admin || e.target.closest('button')) return;
-  if (e.key === ' ' || e.key === 'ArrowRight') {
-    e.preventDefault();
-    primary()?.run();
-  } else if (e.key === 'ArrowLeft') {
-    e.preventDefault();
-    actions.back();
-  }
+  const next = NEXT_KEYS.includes(e.key), prev = PREV_KEYS.includes(e.key);
+  if (!next && !prev) return;
+  // 버튼에 포커스가 있을 때 Space·Enter는 그 버튼을 누르는 키다. 가로채지 않는다.
+  if (e.target.closest('button') && (e.key === ' ' || e.key === 'Enter')) return;
+  e.preventDefault();
+  if (S.busy) return;
+  if (next) primary()?.run(); else actions.back();
+});
+
+// 화면 빈 곳을 클릭해도 다음으로 넘어간다(포인터의 클릭 버튼 · 마우스).
+root.addEventListener('click', e => {
+  if (S.auth !== 'ready' || S.busy || e.target.closest('button, input, a')) return;
+  primary()?.run();
 });
 
 if (DEMO) startDemo();

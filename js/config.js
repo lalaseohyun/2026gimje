@@ -4,6 +4,8 @@ export const EVENT = {
   title: '쨈매로 다다잇선 시작워크숍',
   subtitle: '김제 원도심과 쨈매를 맞혀라!',
   lobbyMessage: 'QR코드를 접속해 주세요.',
+  // 대기 화면 QR이 가리킬 참가자 주소. 진행자 화면을 어디서 열든(내 컴퓨터의 localhost 포함) 항상 이 주소로 QR을 만든다.
+  joinUrl: 'https://lalaseohyun.github.io/2026gimje/',
   teamLabel: '존',
   teamCount: 6,
   // teamId는 1~6 숫자 키. 'D+G'는 '+' 때문에 realAnswers()의 키 검사(/^[\w-]+$/)를

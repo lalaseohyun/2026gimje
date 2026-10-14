@@ -12,7 +12,7 @@ import { h, batcher, paragraphs, MARKS } from './dom.js';
 
 const root = document.getElementById('app');
 const TEAMS = teamList();
-const JOIN_URL = new URL('index.html', location.href).href;
+const JOIN_URL = EVENT.joinUrl || new URL('index.html', location.href).href;
 
 const S = {
   auth: 'loading',          // loading | key | ready | error

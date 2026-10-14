@@ -14,7 +14,7 @@ export const EVENT = {
     1: 'A존', 2: 'B존', 3: 'C존', 4: 'D+G존', 5: 'E존', 6: 'Z존'
   },
   members: {},              // 예) 1: ['홍길동', '김철수'] — PIN 설정 화면 오인 선택 방지용
-  joinMode: 'pin',
+  joinMode: 'open',
   showRanking: true,
   tieBreak: 'speed'
 };
